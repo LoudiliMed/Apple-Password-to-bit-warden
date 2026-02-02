@@ -1,0 +1,14 @@
+# Exports / outputs (sensitive)
+password.csv
+bitwarden.csv
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# OS / editor
+.DS_Store
+.vscode/
