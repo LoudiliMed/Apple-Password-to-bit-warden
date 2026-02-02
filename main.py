@@ -19,11 +19,6 @@ f v is not None and str(v).strip() != "":
 
 
                                                                                         def build_field_map(headers: list[str]) -> dict[str, str]:
-                                                                                                """
-                                                                                                    Returns mapping from internal keys -> actual header name in the input CSV.
-                                                                                                        internal keys: title,url,username,password,notes,totp,favorite,folder
-                                                                                                            """
-                                                                                                                # Common Apple / iCloud / Safari export variants (best-effort)
                                                                                                                     candidates = {
                                                                                                                                     "title": [
                                                                                                                                               #!/usr/bin/env python3
@@ -132,8 +127,6 @@ def first_nonempty(*vals: str) -> str:
                 mapping[key] = by_norm[nn]
                 break
 
-    # Extra heuristic: sometimes URL column is empty and the "Title" is the domain
-    # (no action needed here; handled later by guess_name)
 
     return mapping
 
