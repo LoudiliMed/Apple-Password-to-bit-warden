@@ -1,34 +1,11 @@
-f v is not None and str(v).strip() != "":
-                return str(v).strip()
-                return ""
-
-
-            def guess_name(title: str, url: str) -> str:
-                    t = (title or "").strip()
-                        if t:
-                                    return t
-                                    u = (url or "").strip()
-                                        if not u:
-                                                    return ""
-                                                    try:
-                                                                p = urlparse(u if "://" in u else "https://" + u)
-                                                                        host = (p.hostname or "").strip()
-                                                                                return host or u
-                                                                                except Exception:
-                                                                                            return u
-
-
-                                                                                        def build_field_map(headers: list[str]) -> dict[str, str]:
-                                                                                                                    candidates = {
-                                                                                                                                    "title": [
-                                                                                                                                              #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Convert Apple Passwords / iCloud Passwords CSV export to Bitwarden CSV import.
 
 Bitwarden CSV columns (required order):
 folder,favorite,type,name,notes,fields,login_uri,login_username,login_password,login_totp
 
-This script tries to auto-detect Apple/Safari/iCloud column names.
+This script auto-detects common Apple/Safari/iCloud column names.
 """
 
 from __future__ import annotations
@@ -57,40 +34,45 @@ def norm(s: str) -> str:
     return re.sub(r"[\s_\-]+", "", (s or "").strip().lower())
 
 
-def first_nonempty(*vals: str) -> str:
+def safe_strip(v) -> str:
+    if v is None:
+        return ""
+    s = str(v).strip()
+    return s if s else ""
+
+
+def first_nonempty(*vals) -> str:
     for v in vals:
-        i      "title",
-            "name",
-            "website name",
-            "site",
-            "service",
-        ],
-        "url": [
-            "url",
-            "website",
-            "website url",
-            "websiteurl",
-            "uri",
-            "link",
-        ],
-        "username": [
-            "username",
-            "user name",
-            "login",
-            "account",
-            "email",
-        ],
-        "password": [
-            "password",
-            "pass",
-            "passwd",
-        ],
-        "notes": [
-            "notes",
-            "note",
-            "comments",
-            "comment",
-        ],
+        s = safe_strip(v)
+        if s:
+            return s
+    return ""
+
+
+def guess_name(title: str, url: str) -> str:
+    t = safe_strip(title)
+    if t:
+        return t
+
+    u = safe_strip(url)
+    if not u:
+        return ""
+
+    try:
+        p = urlparse(u if "://" in u else "https://" + u)
+        host = safe_strip(p.hostname)
+        return host or u
+    except Exception:
+        return u
+
+
+def build_field_map(headers: list[str]) -> dict[str, str]:
+    candidates: dict[str, list[str]] = {
+        "title": ["title", "name", "website name", "site", "service"],
+        "url": ["url", "website", "website url", "websiteurl", "uri", "link"],
+        "username": ["username", "user name", "login", "account", "email"],
+        "password": ["password", "pass", "passwd"],
+        "notes": ["notes", "note", "comments", "comment"],
         "totp": [
             "otp",
             "totp",
@@ -103,18 +85,8 @@ def first_nonempty(*vals: str) -> str:
             "twofactor",
             "authenticator",
         ],
-        "folder": [
-            "folder",
-            "group",
-            "category",
-            "collection",
-        ],
-        "favorite": [
-            "favorite",
-            "favourite",
-            "star",
-            "starred",
-        ],
+        "folder": ["folder", "group", "category", "collection"],
+        "favorite": ["favorite", "favourite", "star", "starred"],
     }
 
     by_norm = {norm(h): h for h in headers}
@@ -127,15 +99,22 @@ def first_nonempty(*vals: str) -> str:
                 mapping[key] = by_norm[nn]
                 break
 
-
     return mapping
 
 
 def to_bool_favorite(val: str) -> str:
     v = norm(val)
-    if v in {"1", "true", "yes", "y", "on"}:
-        return "1"
-    return ""
+    return "1" if v in {"1", "true", "yes", "y", "on"} else ""
+
+
+def looks_like_url_or_domain(s: str) -> bool:
+    s = safe_strip(s)
+    if not s:
+        return False
+    return bool(
+        re.match(r"^(https?://)", s, re.I)
+        or re.match(r"^[a-z0-9.-]+\.[a-z]{2,}(/.*)?$", s, re.I)
+    )
 
 
 def convert(in_path: str, out_path: str) -> None:
@@ -152,39 +131,34 @@ def convert(in_path: str, out_path: str) -> None:
             writer.writeheader()
 
             for row in reader:
-                title = row.get(field_map.get("title", ""), "")
-                url = row.get(field_map.get("url", ""), "")
-                username = row.get(field_map.get("username", ""), "")
-                password = row.get(field_map.get("password", ""), "")
-                notes = row.get(field_map.get("notes", ""), "")
-                totp = row.get(field_map.get("totp", ""), "")
-                folder = row.get(field_map.get("folder", ""), "")
+                title = safe_strip(row.get(field_map.get("title", ""), ""))
+                url = safe_strip(row.get(field_map.get("url", ""), ""))
+                username = safe_strip(row.get(field_map.get("username", ""), ""))
+                password = safe_strip(row.get(field_map.get("password", ""), ""))
+                notes = safe_strip(row.get(field_map.get("notes", ""), ""))
+                totp = safe_strip(row.get(field_map.get("totp", ""), ""))
+                folder = safe_strip(row.get(field_map.get("folder", ""), ""))
 
-                favorite_raw = row.get(field_map.get("favorite", ""), "")
+                favorite_raw = safe_strip(row.get(field_map.get("favorite", ""), ""))
                 favorite = to_bool_favorite(favorite_raw)
 
-                # Some Apple exports put domain in Title and leave URL empty
-                # Try to treat Title as URL if it looks like a domain/URL and URL is empty.
-                if not url and title:
-                    looks_like_url = bool(
-                        re.match(r"^(https?://)", title.strip(), re.I)
-                        or re.match(r"^[a-z0-9.-]+\.[a-z]{2,}(/.*)?$", title.strip(), re.I)
-                    )
-                    if looks_like_url:
-                        url = title.strip()
+                # If URL is empty but Title looks like a URL/domain, treat it as URL.
+                if not url and looks_like_url_or_domain(title):
+                    url = title
 
                 bw_row = {
-                    "folder": (folder or "").strip(),
+                    "folder": folder,
                     "favorite": favorite,
                     "type": "login",
                     "name": guess_name(title, url),
-                    "notes": (notes or "").strip(),
-                    "fields": "",  # custom fields not supported here
-                    "login_uri": (url or "").strip(),
-                    "login_username": (username or "").strip(),
-                    "login_password": (password or "").strip(),
-                    "login_totp": (totp or "").strip(),
+                    "notes": notes,
+                    "fields": "",
+                    "login_uri": url,
+                    "login_username": username,
+                    "login_password": password,
+                    "login_totp": totp,
                 }
+
                 # Skip completely empty rows
                 if any(bw_row[k] for k in ["name", "login_uri", "login_username", "login_password", "notes"]):
                     writer.writerow(bw_row)
@@ -215,4 +189,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
