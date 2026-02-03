@@ -21,10 +21,10 @@ Do not commit CSV exports to Git. This repo ignores `*.csv` by default.
 
 1) Export your passwords from Apple Passwords / iCloud Keychain as a CSV (you should end up with something like `password.csv`).
 
-2) Put `password.csv` in the same folder as the script.
+2) Put `Passwords.csv` in the same folder as the script.
 
 3) Run:
 
 ```bash
-python3 apple_to_bitwarden.py password.csv -o bitwarden.csv
+python3 main.py Passwords.csv -o bitwarden.csv
 ```
